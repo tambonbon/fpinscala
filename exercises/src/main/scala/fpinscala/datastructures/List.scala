@@ -55,17 +55,67 @@ object List { // `List` companion object. Contains functions for creating and wo
     case Nil => Nil
   }
 
-  def setHead[A](l: List[A], h: A): List[A] = ???
+  def setHead[A](l: List[A], h: A): List[A] = l match {
+    case Cons(head, tail) => Cons(h, tail)
+    case Nil => Nil
+  }
 
-  def drop[A](l: List[A], n: Int): List[A] = ???
+  def drop[A](l: List[A], n: Int): List[A] = l match {
+    case Cons(head, tail) => drop(tail, n-1) // ? why n-1 ?
+    case Nil => Nil
+  }
 
-  def dropWhile[A](l: List[A], f: A => Boolean): List[A] = ???
+  def dropWhile[A](l: List[A], f: A => Boolean): List[A] = l match {
+    case Cons(head, tail) if (f(head)) => dropWhile(tail, f) // if before =>
+    case _ => l
+  }
 
-  def init[A](l: List[A]): List[A] = ???
+  def init[A](l: List[A]): List[A] = l match {
+    case Nil => Nil
+    case Cons(head, Nil) => Nil
+    case Cons(head, tail) => Cons(head, init(tail))
+  }
 
-  def length[A](l: List[A]): Int = ???
+  def length[A](l: List[A]): Int = 
+    foldRight(l, 0)((head, acc) => acc + 1) // head is A
 
-  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = ???
+  @annotation.tailrec  
+  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = l match {
+    case Cons(head, tail) => foldLeft(tail, f(z, head))(f)
+    case Nil => z
+    // in foldRight:
+      // case Nil => z
+      // case Cons(x, xs) => f(x, foldRight(xs, z)(f))
+  }
+    
 
-  def map[A,B](l: List[A])(f: A => B): List[B] = ???
+  def sixteen(list: List[Int]): List[Int] = {
+    foldRight(list, Nil: List[Int])((head, tail) => Cons(head + 1, tail))
+  }
+
+  def seventeen(list: List[Double]): List[String] = {
+    foldRight(list, Nil: List[String])((head, tail) => Cons(head.toString(), tail)) 
+  } // need Nil: List[String], not List[Int]
+  // head: List[Double], tail: List[String]
+  
+  def map[A,B](l: List[A])(f: A => B): List[B] = {
+    foldRight(l, Nil: List[B])((head, tail) => Cons(f(head), tail)) 
+  } // head: A, tail: List[B] why?
+
+  def filter[A](l: List[A])(f: A => Boolean): List[A] = {
+    foldRight(l, Nil: List[A])((head, tail) => if (f(head)) Cons(head, tail) else tail)
+  } // head: A, tail: List[A]
+
+  def flatMap[A, B](l: List[A])(f: A => List[B]): List[B] = {
+    foldLeft(l, Nil: List[B])((head, tail) => append(head, f(tail)))
+  }
+
+}
+
+object TestList {
+  def main(args: Array[String]): Unit = {
+    import List._
+    assert(flatMap(List(1,2,3))(i => List(i,i)) == List(1,1,2,2,3,3))    
+    assert(flatMap(List(1,2,3))(i => List(i,i)) != List(1,1,2,2,3))    
+  }
 }
