@@ -1,6 +1,7 @@
 package fpinscala.laziness
 
 import Stream._
+import org.scalactic.Bool
 trait Stream[+A] {
 
   def foldRight[B](z: => B)(f: (A, => B) => B): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
@@ -17,15 +18,63 @@ trait Stream[+A] {
     case Empty => None
     case Cons(h, t) => if (f(h())) Some(h()) else t().find(f)
   }
-  def take(n: Int): Stream[A] = ???
 
-  def drop(n: Int): Stream[A] = ???
+  // 5.1
+  def toList: List[A] = this match {
+    case Cons(h, t) => h() :: t().toList // t() is Stream[A]
+    case Empty => List() // List must have () here, as it's empty
+  }
 
-  def takeWhile(p: A => Boolean): Stream[A] = ???
+  def toListTailRec: List[A] = {
+    @annotation.tailrec
+    def go(stream: Stream[A], acc: List[A]): List[A] = stream match {
+      case Cons(h, t) => go(t(), h() :: acc)
+      case Empty => List()
+    }
+    go(this, List())
+  }
 
-  def forAll(p: A => Boolean): Boolean = ???
+  def take(n: Int): Stream[A] = this match {
+    case Cons(h, t) if n > 1 => cons(h(), t().take(n - 1))
+    case Cons(h, _) if n == 1 => cons(h(), empty)
+    case Empty => empty
+  }
 
-  def headOption: Option[A] = ???
+  /*
+Unlike `take`, `drop` is not incremental. That is, it doesn't generate the
+answer lazily. It must traverse the first `n` elements of the stream eagerly.
+*/
+  def drop(n: Int): Stream[A] = this match {
+    case Cons(h, t) => t().drop(n - 1)
+    case Empty => this
+  }
+
+  /** 
+   * Return all starting elements of a Stream matching the given predicate
+  */
+  def takeWhile(p: A => Boolean): Stream[A] = this match {
+    case Cons(h, t) if p(h()) => cons(h(), t().takeWhile(p)) 
+    case Empty => empty
+  }
+
+  def takeWhileFoldRight(p: A => Boolean): Stream[A] = ???
+
+  /** 
+   * Check all elements in Stream match a given predicate.
+   * It should terminate the traversal as soon as it encounters a nonmatching value
+  */
+  def forAll(p: A => Boolean): Boolean = this match {
+    case Cons(h, t) => p(h()) && t().forAll(p)
+    case _ => false
+  }
+
+
+  def headOption: Option[A] = this match {
+    case Cons(h, t) => Some(h())
+    case Empty => None
+  }
+
+  def headOptionFoldRight: Option[A] = foldRight(None: Option[A])((h, t) => Some(h))
 
   // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
   // writing your own function signatures.
